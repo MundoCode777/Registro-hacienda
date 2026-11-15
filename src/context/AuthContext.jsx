@@ -1,0 +1,128 @@
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { supabase } from '../services/supabaseClient';
+
+const AuthContext = createContext(null);
+
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth debe usarse dentro de AuthProvider');
+  return ctx;
+};
+
+// Módulos disponibles para cualquier usuario autenticado
+const SIEMPRE_PERMITIDOS = ['dashboard', 'notificaciones'];
+
+export function AuthProvider({ children }) {
+  const [session, setSession] = useState(null);
+  const [perfil, setPerfil] = useState(null);
+  const [permisos, setPermisos] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // 1) Escuchar la sesión de Supabase
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      if (!data.session) setLoading(false);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_evento, nuevaSesion) => {
+      setSession(nuevaSesion);
+      if (!nuevaSesion) {
+        setPerfil(null);
+        setPermisos([]);
+        setLoading(false);
+      }
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  // 2) Cargar perfil y permisos del usuario
+  const cargarPerfil = useCallback(async (userId) => {
+    const { data: p, error } = await supabase
+      .from('usuarios')
+      .select('*, roles(id, nombre)')
+      .eq('id', userId)
+      .single();
+
+    if (error || !p) {
+      setPerfil(null);
+      setPermisos([]);
+      setLoading(false);
+      return;
+    }
+
+    const { data: perms } = await supabase
+      .from('permisos_modulo')
+      .select('*')
+      .eq('rol_id', p.rol_id);
+
+    setPerfil(p);
+    setPermisos(perms || []);
+    setLoading(false);
+  }, []);
+
+  const userId = session?.user?.id;
+  useEffect(() => {
+    if (userId) cargarPerfil(userId);
+  }, [userId, cargarPerfil]);
+
+  // 3) Acciones
+  const registrarSesion = async () => {
+    const { data: sesionId } = await supabase.rpc('registrar_login', {
+      p_dispositivo: navigator.userAgent.slice(0, 200),
+    });
+    if (sesionId) localStorage.setItem('sesion_id', sesionId);
+  };
+
+  const signIn = async (correo, password) => {
+    const { error } = await supabase.auth.signInWithPassword({ email: correo, password });
+    if (error) throw error;
+    await registrarSesion();
+  };
+
+  const signUp = async (nombre, correo, password) => {
+    const { data, error } = await supabase.auth.signUp({
+      email: correo,
+      password,
+      options: { data: { nombre_completo: nombre } },
+    });
+    if (error) throw error;
+    if (data.session) await registrarSesion();
+    return data;
+  };
+
+  const signOut = async () => {
+    const sesionId = localStorage.getItem('sesion_id');
+    if (sesionId) {
+      await supabase.rpc('cerrar_sesion', { p_id: sesionId });
+      localStorage.removeItem('sesion_id');
+    }
+    await supabase.auth.signOut();
+  };
+
+  // 4) Permisos por módulo y acción
+  const puede = (modulo, accion = 'leer') => {
+    if (SIEMPRE_PERMITIDOS.includes(modulo)) return true;
+    const p = permisos.find((x) => x.modulo === modulo);
+    return Boolean(p && p[accion]);
+  };
+
+  const rol = perfil?.roles?.nombre ?? null;
+
+  const value = {
+    session,
+    perfil,
+    rol,
+    esAdmin: rol === 'Administrador',
+    puedeEnviarNotificaciones: rol === 'Administrador' || rol === 'Capataz',
+    loading,
+    signIn,
+    signUp,
+    signOut,
+    puede,
+    recargarPerfil: () => userId && cargarPerfil(userId),
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
