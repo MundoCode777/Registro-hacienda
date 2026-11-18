@@ -1,11 +1,39 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Layers, Ruler, Sprout } from 'lucide-react';
 import { MODULOS } from '../config/modulos';
 import { useAuth } from '../context/AuthContext';
+import { resumenHacienda } from '../services/haciendaService';
+import { fmt } from '../utils/suelo';
+
+function Estadistica({ icono: Icono, etiqueta, valor, unidad }) {
+  return (
+    <div className="card flex items-center gap-4 p-5">
+      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-100 text-green-700">
+        <Icono className="h-6 w-6" />
+      </div>
+      <div>
+        <p className="text-xs uppercase tracking-wide text-stone-500">{etiqueta}</p>
+        <p className="text-2xl font-extrabold">
+          {valor} {unidad && <span className="text-sm font-medium text-stone-500">{unidad}</span>}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const { perfil, rol, puede } = useAuth();
+  const [resumen, setResumen] = useState(null);
   const modulos = MODULOS.filter((m) => m.clave !== 'dashboard' && puede(m.clave, 'leer'));
+  const veHacienda = puede('hacienda', 'leer');
+
+  useEffect(() => {
+    if (!veHacienda) return;
+    resumenHacienda()
+      .then(setResumen)
+      .catch(() => setResumen(null));
+  }, [veHacienda]);
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -18,6 +46,14 @@ export default function Dashboard() {
           Bienvenido a la agenda digital de la Hacienda La Querencia. Elige un módulo para comenzar.
         </p>
       </div>
+
+      {resumen && (
+        <div className="mt-6 grid gap-5 sm:grid-cols-3">
+          <Estadistica icono={Ruler} etiqueta="Extensión total" valor={fmt(resumen.hacienda.extension_ha)} unidad="ha" />
+          <Estadistica icono={Sprout} etiqueta="Hectáreas en uso" valor={fmt(resumen.areaUsada)} unidad="ha" />
+          <Estadistica icono={Layers} etiqueta="Lotes activos" valor={resumen.lotesActivos} />
+        </div>
+      )}
 
       <h2 className="mb-4 mt-10 text-lg font-bold">Tus módulos</h2>
       <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
