@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Layers, Ruler, Sprout } from 'lucide-react';
+import { ArrowRight, CalendarClock, Layers, Maximize, Ruler, Sprout } from 'lucide-react';
 import { MODULOS } from '../config/modulos';
 import { useAuth } from '../context/AuthContext';
 import { resumenHacienda } from '../services/haciendaService';
+import { resumenCultivos } from '../services/cultivosService';
 import { fmt } from '../utils/suelo';
 
 function Estadistica({ icono: Icono, etiqueta, valor, unidad }) {
   return (
     <div className="card flex items-center gap-4 p-5">
-      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-100 text-green-700">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-green-100 text-green-700">
         <Icono className="h-6 w-6" />
       </div>
       <div>
@@ -24,16 +25,25 @@ function Estadistica({ icono: Icono, etiqueta, valor, unidad }) {
 
 export default function Dashboard() {
   const { perfil, rol, puede } = useAuth();
-  const [resumen, setResumen] = useState(null);
+  const [hacienda, setHacienda] = useState(null);
+  const [cultivos, setCultivos] = useState(null);
+
   const modulos = MODULOS.filter((m) => m.clave !== 'dashboard' && puede(m.clave, 'leer'));
   const veHacienda = puede('hacienda', 'leer');
+  const veCultivos = puede('cultivos', 'leer');
 
   useEffect(() => {
-    if (!veHacienda) return;
-    resumenHacienda()
-      .then(setResumen)
-      .catch(() => setResumen(null));
-  }, [veHacienda]);
+    if (veHacienda) {
+      resumenHacienda()
+        .then(setHacienda)
+        .catch(() => setHacienda(null));
+    }
+    if (veCultivos) {
+      resumenCultivos()
+        .then(setCultivos)
+        .catch(() => setCultivos(null));
+    }
+  }, [veHacienda, veCultivos]);
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -47,11 +57,21 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {resumen && (
-        <div className="mt-6 grid gap-5 sm:grid-cols-3">
-          <Estadistica icono={Ruler} etiqueta="Extensión total" valor={fmt(resumen.hacienda.extension_ha)} unidad="ha" />
-          <Estadistica icono={Sprout} etiqueta="Hectáreas en uso" valor={fmt(resumen.areaUsada)} unidad="ha" />
-          <Estadistica icono={Layers} etiqueta="Lotes activos" valor={resumen.lotesActivos} />
+      {(hacienda || cultivos) && (
+        <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {hacienda && (
+            <>
+              <Estadistica icono={Ruler} etiqueta="Extensión total" valor={fmt(hacienda.hacienda.extension_ha)} unidad="ha" />
+              <Estadistica icono={Maximize} etiqueta="Hectáreas en lotes" valor={fmt(hacienda.areaUsada)} unidad="ha" />
+              <Estadistica icono={Layers} etiqueta="Lotes activos" valor={hacienda.lotesActivos} />
+            </>
+          )}
+          {cultivos && (
+            <>
+              <Estadistica icono={Sprout} etiqueta="Siembras en curso" valor={cultivos.enCurso} />
+              <Estadistica icono={CalendarClock} etiqueta="Cosechas en 30 días" valor={cultivos.cosechasProximas} />
+            </>
+          )}
         </div>
       )}
 
