@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Loader2, Search } from 'lucide-react';
+import { AlertCircle, CheckCircle2, KeyRound, Loader2, Search } from 'lucide-react';
 import { supabase } from '../../services/supabaseClient';
+import { enviarRecuperacion, traducirErrorAuth } from '../../services/authService';
 import { useAuth } from '../../context/AuthContext';
 import { formatearFecha } from '../../utils/formato';
 
@@ -11,7 +12,9 @@ export default function TabUsuarios() {
   const [busqueda, setBusqueda] = useState('');
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
+  const [exito, setExito] = useState('');
   const [guardando, setGuardando] = useState(null);
+  const [enviando, setEnviando] = useState(null);
 
   const puedeEditar = puede('usuarios', 'actualizar');
 
@@ -32,11 +35,26 @@ export default function TabUsuarios() {
 
   const actualizar = async (id, cambios) => {
     setError('');
+    setExito('');
     setGuardando(id);
     const { error: err } = await supabase.from('usuarios').update(cambios).eq('id', id);
     if (err) setError(err.message || 'No se pudo guardar el cambio.');
     await cargar();
     setGuardando(null);
+  };
+
+  const enviarEnlace = async (u) => {
+    setError('');
+    setExito('');
+    setEnviando(u.id);
+    try {
+      await enviarRecuperacion(u.correo);
+      setExito(`Se envió el enlace de recuperación a ${u.correo}.`);
+    } catch (err) {
+      setError(traducirErrorAuth(err.message));
+    } finally {
+      setEnviando(null);
+    }
   };
 
   const filtrados = useMemo(() => {
@@ -61,6 +79,11 @@ export default function TabUsuarios() {
           <AlertCircle className="h-4 w-4 shrink-0" /> {error}
         </div>
       )}
+      {exito && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl bg-green-50 p-3 text-sm text-green-800">
+          <CheckCircle2 className="h-4 w-4 shrink-0" /> {exito}
+        </div>
+      )}
 
       <div className="card overflow-hidden">
         {cargando ? (
@@ -76,6 +99,7 @@ export default function TabUsuarios() {
                   <th className="px-5 py-3">Rol</th>
                   <th className="px-5 py-3">Último ingreso</th>
                   <th className="px-5 py-3">Estado</th>
+                  <th className="px-5 py-3">Contraseña</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
@@ -121,12 +145,27 @@ export default function TabUsuarios() {
                           {u.activo ? 'Activo' : 'Inactivo'}
                         </button>
                       </td>
+                      <td className="px-5 py-4">
+                        <button
+                          disabled={!puedeEditar || enviando === u.id}
+                          onClick={() => enviarEnlace(u)}
+                          className="btn-ghost border border-stone-300 !px-3 !py-1.5 text-xs"
+                          title="Enviar enlace para restablecer la contraseña"
+                        >
+                          {enviando === u.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <KeyRound className="h-3.5 w-3.5" />
+                          )}
+                          Enviar enlace
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
                 {filtrados.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-5 py-10 text-center text-stone-500">
+                    <td colSpan={5} className="px-5 py-10 text-center text-stone-500">
                       No se encontraron usuarios.
                     </td>
                   </tr>

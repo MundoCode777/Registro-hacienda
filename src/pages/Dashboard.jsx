@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, CalendarClock, Layers, Maximize, Ruler, Sprout } from 'lucide-react';
+import { ArrowRight, CalendarClock, HardHat, Layers, Maximize, Ruler, Sprout } from 'lucide-react';
 import { MODULOS } from '../config/modulos';
 import { useAuth } from '../context/AuthContext';
 import { resumenHacienda } from '../services/haciendaService';
 import { resumenCultivos } from '../services/cultivosService';
+import { resumenPersonal } from '../services/personalService';
 import { fmt } from '../utils/suelo';
 
 function Estadistica({ icono: Icono, etiqueta, valor, unidad }) {
@@ -27,10 +28,12 @@ export default function Dashboard() {
   const { perfil, rol, puede } = useAuth();
   const [hacienda, setHacienda] = useState(null);
   const [cultivos, setCultivos] = useState(null);
+  const [personal, setPersonal] = useState(null);
 
   const modulos = MODULOS.filter((m) => m.clave !== 'dashboard' && puede(m.clave, 'leer'));
   const veHacienda = puede('hacienda', 'leer');
   const veCultivos = puede('cultivos', 'leer');
+  const vePersonal = puede('personal', 'leer');
 
   useEffect(() => {
     if (veHacienda) {
@@ -43,7 +46,12 @@ export default function Dashboard() {
         .then(setCultivos)
         .catch(() => setCultivos(null));
     }
-  }, [veHacienda, veCultivos]);
+    if (vePersonal) {
+      resumenPersonal()
+        .then(setPersonal)
+        .catch(() => setPersonal(null));
+    }
+  }, [veHacienda, veCultivos, vePersonal]);
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -57,7 +65,7 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {(hacienda || cultivos) && (
+      {(hacienda || cultivos || personal) && (
         <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {hacienda && (
             <>
@@ -72,6 +80,7 @@ export default function Dashboard() {
               <Estadistica icono={CalendarClock} etiqueta="Cosechas en 30 días" valor={cultivos.cosechasProximas} />
             </>
           )}
+          {personal && <Estadistica icono={HardHat} etiqueta="Trabajadores activos" valor={personal.activos} />}
         </div>
       )}
 
