@@ -221,4 +221,4 @@ export default function PanelInsumos({ actividad, mapaTrab, puedeActualizar, ges
       )}
     </div>
   );
-}
+} 
