@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   AlertCircle,
+  AlertTriangle,
   ArrowRight,
   CalendarClock,
   CalendarDays,
@@ -17,6 +18,7 @@ import { resumenHacienda } from '../services/haciendaService';
 import { resumenCultivos } from '../services/cultivosService';
 import { resumenPersonal } from '../services/personalService';
 import { resumenAgenda } from '../services/agendaService';
+import { resumenInsumos } from '../services/insumosService';
 import { fmt } from '../utils/suelo';
 
 function Estadistica({ icono: Icono, etiqueta, valor, unidad, alerta }) {
@@ -45,18 +47,25 @@ export default function Dashboard() {
   const [cultivos, setCultivos] = useState(null);
   const [personal, setPersonal] = useState(null);
   const [agenda, setAgenda] = useState(null);
+  const [insumos, setInsumos] = useState(null);
 
   const modulos = MODULOS.filter((m) => m.clave !== 'dashboard' && puede(m.clave, 'leer'));
   const veHacienda = puede('hacienda', 'leer');
   const veCultivos = puede('cultivos', 'leer');
   const vePersonal = puede('personal', 'leer');
   const veAgenda = puede('agenda', 'leer');
+  const veInsumos = puede('insumos', 'leer');
 
   useEffect(() => {
     if (veAgenda) {
       resumenAgenda()
         .then(setAgenda)
         .catch(() => setAgenda(null));
+    }
+    if (veInsumos) {
+      resumenInsumos()
+        .then(setInsumos)
+        .catch(() => setInsumos(null));
     }
     if (veHacienda) {
       resumenHacienda()
@@ -73,7 +82,7 @@ export default function Dashboard() {
         .then(setPersonal)
         .catch(() => setPersonal(null));
     }
-  }, [veHacienda, veCultivos, vePersonal, veAgenda]);
+  }, [veHacienda, veCultivos, vePersonal, veAgenda, veInsumos]);
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -87,7 +96,7 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {(agenda || hacienda || cultivos || personal) && (
+      {(agenda || insumos || hacienda || cultivos || personal) && (
         <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {agenda && (
             <>
@@ -99,6 +108,14 @@ export default function Dashboard() {
                 alerta={agenda.atrasadas > 0}
               />
             </>
+          )}
+          {insumos && (
+            <Estadistica
+              icono={AlertTriangle}
+              etiqueta="Alertas de inventario"
+              valor={insumos.alertas}
+              alerta={insumos.alertas > 0}
+            />
           )}
           {hacienda && (
             <>

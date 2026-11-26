@@ -11,9 +11,10 @@ import Hacienda from './pages/hacienda/Hacienda';
 import Cultivos from './pages/cultivos/Cultivos';
 import Personal from './pages/personal/Personal';
 import Agenda from './pages/agenda/Agenda';
+import Insumos from './pages/insumos/Insumos';
 import { MODULOS } from './config/modulos';
 
-// Aquí se irán registrando las páginas reales de cada módulo
+// Aquí se registran las páginas reales de cada módulo
 const PAGINAS = {
   usuarios: <Usuarios />,
   notificaciones: <Notificaciones />,
@@ -21,6 +22,7 @@ const PAGINAS = {
   cultivos: <Cultivos />,
   personal: <Personal />,
   agenda: <Agenda />,
+  insumos: <Insumos />,
 };
 
 export default function App() {

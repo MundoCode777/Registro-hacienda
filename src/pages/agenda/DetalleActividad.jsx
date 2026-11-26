@@ -4,6 +4,7 @@ import {
   Ban,
   Camera,
   CheckCircle2,
+  Droplets,
   Loader2,
   Pencil,
   Play,
@@ -16,6 +17,7 @@ import Tabs from '../../components/ui/Tabs';
 import PanelEquipo from './PanelEquipo';
 import PanelSeguimiento from './PanelSeguimiento';
 import PanelEvidencias from './PanelEvidencias';
+import PanelInsumos from './PanelInsumos';
 import {
   actualizarActividad,
   cancelarSerie,
@@ -85,6 +87,7 @@ export default function DetalleActividad({ actividad: a, mapaTrab, trabajadores,
     { clave: 'resumen', nombre: 'Resumen', icono: CheckCircle2 },
     { clave: 'equipo', nombre: `Equipo (${asignados})`, icono: Users },
     { clave: 'seguimiento', nombre: 'Seguimiento', icono: TrendingUp },
+    { clave: 'insumos', nombre: 'Insumos', icono: Droplets },
     { clave: 'evidencias', nombre: 'Evidencias', icono: Camera },
   ];
 
@@ -350,6 +353,10 @@ export default function DetalleActividad({ actividad: a, mapaTrab, trabajadores,
 
       {seccion === 'seguimiento' && (
         <PanelSeguimiento actividad={a} puedeActualizar={puedeActualizar} onCambio={onCambio} />
+      )}
+
+      {seccion === 'insumos' && (
+        <PanelInsumos actividad={a} mapaTrab={mapaTrab} puedeActualizar={puedeActualizar} gestor={gestor} />
       )}
 
       {seccion === 'evidencias' && (
