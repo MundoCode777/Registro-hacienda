@@ -3,7 +3,6 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute, { RequirePermiso } from './components/auth/ProtectedRoute';
 import MainLayout from './components/layout/MainLayout';
 import Login from './pages/Login';
-import Restablecer from './pages/Restablecer';
 import Dashboard from './pages/Dashboard';
 import ModuloPendiente from './pages/ModuloPendiente';
 import Usuarios from './pages/usuarios/Usuarios';
@@ -11,6 +10,7 @@ import Notificaciones from './pages/notificaciones/Notificaciones';
 import Hacienda from './pages/hacienda/Hacienda';
 import Cultivos from './pages/cultivos/Cultivos';
 import Personal from './pages/personal/Personal';
+import Agenda from './pages/agenda/Agenda';
 import { MODULOS } from './config/modulos';
 
 // Aquí se irán registrando las páginas reales de cada módulo
@@ -20,6 +20,7 @@ const PAGINAS = {
   hacienda: <Hacienda />,
   cultivos: <Cultivos />,
   personal: <Personal />,
+  agenda: <Agenda />,
 };
 
 export default function App() {
@@ -28,7 +29,6 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/restablecer" element={<Restablecer />} />
 
           <Route element={<ProtectedRoute />}>
             <Route element={<MainLayout />}>

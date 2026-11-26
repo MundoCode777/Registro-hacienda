@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 
 const AuthContext = createContext(null);
@@ -12,11 +12,15 @@ export const useAuth = () => {
 // Módulos disponibles para cualquier usuario autenticado
 const SIEMPRE_PERMITIDOS = ['dashboard', 'notificaciones'];
 
+// Tiempo mínimo entre actualizaciones automáticas del perfil (milisegundos)
+const ESPERA_REFRESCO = 15000;
+
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [perfil, setPerfil] = useState(null);
   const [permisos, setPermisos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const ultimaCarga = useRef(0);
 
   // 1) Escuchar la sesión de Supabase
   useEffect(() => {
@@ -37,8 +41,11 @@ export function AuthProvider({ children }) {
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  // 2) Cargar perfil y permisos del usuario
-  const cargarPerfil = useCallback(async (userId) => {
+  // 2) Cargar perfil y permisos del usuario.
+  // En una actualización silenciosa, un fallo de red no cierra el acceso.
+  const cargarPerfil = useCallback(async (userId, silencioso = false) => {
+    ultimaCarga.current = Date.now();
+
     const { data: p, error } = await supabase
       .from('usuarios')
       .select('*, roles(id, nombre)')
@@ -46,9 +53,11 @@ export function AuthProvider({ children }) {
       .single();
 
     if (error || !p) {
-      setPerfil(null);
-      setPermisos([]);
-      setLoading(false);
+      if (!silencioso) {
+        setPerfil(null);
+        setPermisos([]);
+        setLoading(false);
+      }
       return;
     }
 
@@ -67,7 +76,26 @@ export function AuthProvider({ children }) {
     if (userId) cargarPerfil(userId);
   }, [userId, cargarPerfil]);
 
-  // 3) Acciones
+  // 3) Al volver a la pestaña o ventana, se actualiza el perfil (rol, permisos y vínculo
+  // con su ficha de trabajador) sin tener que cerrar sesión.
+  useEffect(() => {
+    if (!userId) return undefined;
+
+    const alVolver = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - ultimaCarga.current < ESPERA_REFRESCO) return;
+      cargarPerfil(userId, true);
+    };
+
+    window.addEventListener('focus', alVolver);
+    document.addEventListener('visibilitychange', alVolver);
+    return () => {
+      window.removeEventListener('focus', alVolver);
+      document.removeEventListener('visibilitychange', alVolver);
+    };
+  }, [userId, cargarPerfil]);
+
+  // 4) Acciones
   const registrarSesion = async () => {
     const { data: sesionId } = await supabase.rpc('registrar_login', {
       p_dispositivo: navigator.userAgent.slice(0, 200),
@@ -101,7 +129,7 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut();
   };
 
-  // 4) Permisos por módulo y acción
+  // 5) Permisos por módulo y acción
   const puede = (modulo, accion = 'leer') => {
     if (SIEMPRE_PERMITIDOS.includes(modulo)) return true;
     const p = permisos.find((x) => x.modulo === modulo);
@@ -121,7 +149,7 @@ export function AuthProvider({ children }) {
     signUp,
     signOut,
     puede,
-    recargarPerfil: () => userId && cargarPerfil(userId),
+    recargarPerfil: () => userId && cargarPerfil(userId, true),
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

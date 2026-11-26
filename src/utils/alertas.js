@@ -28,6 +28,13 @@ const toast = Swal.mixin({
   customClass: { popup: '!rounded-xl !font-sans' },
 });
 
+const escapar = (texto = '') =>
+  String(texto)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
 // Pregunta de confirmación. Devuelve true si el usuario acepta.
 export async function confirmar({
   titulo,
@@ -60,6 +67,30 @@ export function mostrarError(titulo, texto) {
     text: texto,
     icon: 'error',
     confirmButtonText: 'Entendido',
+    customClass: clases(),
+  });
+}
+
+// Datos de acceso de una cuenta recién creada (la contraseña no se vuelve a mostrar)
+export function mostrarCredenciales({ nombre, correo, password }) {
+  return base.fire({
+    titleText: 'Cuenta de acceso creada',
+    icon: 'success',
+    iconColor: '#16a34a',
+    html: `
+      <p style="margin-bottom:14px">
+        Entrega estos datos a <strong>${escapar(nombre)}</strong>.
+        La contraseña no se volverá a mostrar.
+      </p>
+      <div style="text-align:left;background:#f5f5f4;border-radius:12px;padding:14px 16px;line-height:1.9">
+        <div><span style="color:#78716c">Correo:</span> <strong>${escapar(correo)}</strong></div>
+        <div><span style="color:#78716c">Contraseña:</span>
+          <strong style="font-family:monospace;font-size:1.05em">${escapar(password)}</strong>
+        </div>
+      </div>
+    `,
+    confirmButtonText: 'Listo, ya los anoté',
+    focusCancel: false,
     customClass: clases(),
   });
 }
